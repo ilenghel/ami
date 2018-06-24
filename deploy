@@ -39,12 +39,27 @@ if [ "$1" == "--help" ] ||  [ "$1" == "help" ]; then
 fi
 
 # Read parameters
-while getopts G:O:r:w:A: option; do
+while getopts c: option; do
     case "${option}" in
-        G) instalGUI=${OPTARG};;        #if set to [yes] a Graphical User Interface will be installed on the Linux Machine. Reboot required.
-        O) openSSH=${OPTARG};;          #if set to [yes] it installs openssh-server on the Linux machine
-        r) rootAuth=${OPTARG};;         #if set to [yes] it configures the ssh service to allow root login with password
-        w) installApache=${OPTARG};;    #if set to [yes] appache2 package will be installed. Required for web interface administration.
-        A) autoConfig=${OPTARG};;
+        C) clientApp=${OPTARG};;        # currently supports roundcube and squirrel
+       
     esac
 done
+
+# Check the distro we are running on
+GetDistro
+
+if [[ "$DISTRO" == "ubuntu"* ]]; then
+    LogMessage "Info: $DISTRO distribution detected." $logFile
+    LogMessage "Info: Proceeding to package installation." $logFile
+
+    apt-get update
+    apt-get install -y bind9 dnsutils apache2 php5 postfix dovecot-common dovecot-imapd dovecot-pop3d
+    
+    
+fi
+
+if [[ "$DISTRO" == "centos"* ]]; then
+    LogMessage "Info: $DISTRO distribution detected." $logFile
+    LogMessage "Info: Proceeding to package installation." $logFile
+fi
