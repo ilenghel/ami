@@ -1,0 +1,36 @@
+#############################
+AMI - Automated Mail Instalation
+#############################
+
+AMI is intended as an infrtrastructure to deploy and manage an E-mail server.
+
+AMI has the following commands:
+deploy        -used to deploy an E-mail server
+add-record    -used to add a record
+delete-record    -used to delete a record
+
+By using AMI's parameters
+
+
+#############################
+# Configure
+#############################
+Usage: ./configure [OPTIONS]
+
+Prepare the Linux host for the E-mail deployment.
+
+Parameters that can be passed to the configuration script
+
+-G [yes|no]         --If set to "yes" it will install ubuntu-desktop on ubuntu distributions. Reboot requiered.
+                    Warning: Installing the Graphical User Interface will require a large
+                    amount of disk space and the configuration process will take more time.
+
+-O [yes|no]         --Installs the openssh-server package.
+
+-r [yes|no]         --If set to [yes] it will configure the SSH service to allow root login with password
+
+-w [yes|no]         --If set to [yes] appache2 package will be installed. Required for web interface administration.
+
+#############################
+# Deploy
+#############################

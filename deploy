@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#
+#
+#
+#
+#
+
+# Global variables
+logFile="deploy.log"
+
+# Clean the old log file
+if [ -e $logFile ]; then
+    rm -rf $logFile
+fi
+
+# Check if the script has been run as root user
+if [ $USER != "root" ]; then
+    echo "Error: Script must be run as root user." >> $logFile
+    exit 1
+fi
+
+# Source the function.sh to have access to commonly used functions
+if [ ! -e functions.sh ]; then
+    echo "Error: Unable to find functions.sh. Please make sure you have downloaded all the necessary files." >> $logFile
+    exit 2
+else
+    source functions.sh
+    if [ $? -ne 0 ]; then
+        echo "Error: Unable to source functions.sh file." >> $logFile
+        exit 3
+    fi
+fi
+
+# In case configure is called with the help parameter show the help file
+if [ "$1" == "--help" ] ||  [ "$1" == "help" ]; then
+    cat help | grep "# Deploy" -A 16 -B 1
+    exit 0
+fi
+
+# Read parameters
+while getopts G:O:r:w:A: option; do
+    case "${option}" in
+        G) instalGUI=${OPTARG};;        #if set to [yes] a Graphical User Interface will be installed on the Linux Machine. Reboot required.
+        O) openSSH=${OPTARG};;          #if set to [yes] it installs openssh-server on the Linux machine
+        r) rootAuth=${OPTARG};;         #if set to [yes] it configures the ssh service to allow root login with password
+        w) installApache=${OPTARG};;    #if set to [yes] appache2 package will be installed. Required for web interface administration.
+        A) autoConfig=${OPTARG};;
+    esac
+done
