@@ -1,7 +1,10 @@
 #!/bin/bash
 
-if [ $1 == "help" ]; then
-	cat help
+if [ "$1" == "help" ]; then
+    cat help 
 fi
 
-if []
+if [ $1 == deploy ]; then
+    chmod +x deploy
+    ./deploy 
+fi

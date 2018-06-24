@@ -131,8 +131,9 @@ GetHostInfo() {
         fi
     done
 
-    hostname=`hostname`
-    hostIPv4=`ip a | grep $activeInterface | grep -w inet| cut -f 6 -d ' ' | cut -f 1 -d '/'`
+    hostName=`hostname`
+    hostIpCidr=`ip a | grep $activeInterface | grep -w inet| cut -f 6 -d ' '`
+    hostIPv4=`echo $hostIpCidr | cut -f 1 -d '/'`
     wanIPv4=`dig +short myip.opendns.com @resolver1.opendns.com`
     
     # Export variables to constants.sh
@@ -141,7 +142,8 @@ GetHostInfo() {
     echo "totalMemKB=$totalMemKB" >> constants.sh
     echo "totalMemMB=$totalMemMB" >> constants.sh
     echo "freeDisk=$freeDisk" >> constants.sh
-    echo "hostname=$hostname" >> constants.sh
+    echo "hostName=$hostName" >> constants.sh
+    echo "hostIpCidr=$hostIpCidr" >> constants.sh
     echo "hostIPv4=$hostIPv4" >> constants.sh
     echo "wanIPv4=$wanIPv4" >> constants.sh
 }

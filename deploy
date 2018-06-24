@@ -1,10 +1,12 @@
 #!/bin/bash
 
+# The deploy stage of AMI will install postfix, dovecot and bind, will check for the corresponding daemons
+# and will configure the E-mail server with the parameters from constants.sh
 #
+# ClamAV and amavisNew will be installed and configured during this stage.
 #
-#
-#
-#
+# Also, during the deploy stage an E-mail webclient will be installed, according to the given parameters.
+# If no E-mail webclient is specified, the installer will default to squirrelmail.
 
 # Global variables
 logFile="deploy.log"
@@ -32,6 +34,18 @@ else
     fi
 fi
 
+# Source the constants.sh to have access to configuration variables
+if [ ! -e constants.sh ]; then
+    echo "Error: Unable to find constants.sh. Please run GetHostInfo to generate one." >> $logFile
+    exit 2
+else
+    source constants.sh
+    if [ $? -ne 0 ]; then
+        echo "Error: Unable to source constants.sh file." >> $logFile
+        exit 3
+    fi
+fi
+
 # In case configure is called with the help parameter show the help file
 if [ "$1" == "--help" ] ||  [ "$1" == "help" ]; then
     cat help | grep "# Deploy" -A 16 -B 1
@@ -39,10 +53,10 @@ if [ "$1" == "--help" ] ||  [ "$1" == "help" ]; then
 fi
 
 # Read parameters
-while getopts c: option; do
+while getopts C:v: option; do
     case "${option}" in
         C) clientApp=${OPTARG};;        # currently supports roundcube and squirrel
-       
+        v) virusScan=${OPTARG};;        # If set to [yes] will install and configure amavis with ClamAV and SpamAssassin
     esac
 done
 
@@ -53,13 +67,119 @@ if [[ "$DISTRO" == "ubuntu"* ]]; then
     LogMessage "Info: $DISTRO distribution detected." $logFile
     LogMessage "Info: Proceeding to package installation." $logFile
 
+    export DEBIAN_FRONTEND=noninteractive
     apt-get update
-    apt-get install -y bind9 dnsutils apache2 php5 postfix dovecot-common dovecot-imapd dovecot-pop3d
-    
-    
+    ubuntuPackages=(bind9 dnsutils apache2 php postfix dovecot-common dovecot-imapd dovecot-pop3d)
+    for package in "${ubuntuPackages[@]}"; do
+        apt-get install -y  $package
+        if [ $? -ne 0 ]; then
+            LogMessage "Error: Unable to install $package ." $logFile
+            exit 4
+        else
+            LogMessage "Info: Successfully installed $package" $logFile
+        fi
+    done
+
+    # Check if the corresponding daemons have been installed
+    postfixDaemons=(postfix qmgr pickup)
+    for daemon in "${postfixDaemons[@]}"; do
+        ps aux | grep $daemon
+        if [ $? -ne 0 ]; then
+            LogMessage "Error: Unable to find $daemon daemon." $logFile
+            exit 10
+        else
+            LogMessage "Info: $daemon daemon is working properly." $logFile
+        fi
+    done
+
+    #If we found all daemons, let's check if postfix is listening on TCP port 25
+    netstat -ant | grep ":25" | grep -w "tcp"
+    if [ $? -ne 0 ]; then
+        LogMessage "Warning: Postfix is not listening on IPv4 SMTP port (Port 25)."
+    fi
+
+    if [ "$virusScan" == "yes" ] || [ "$virusScan" == "Yes" ]; then
+
+        
+        # Install clamAV
+        apt-get install -y clamav clamav-daemon
+        if [ $? -ne 0 ]; then
+            LogMessage "Error: Unable to install clamAV. Exiting installation process." $logFile
+            exit 10
+        fi
+        # If no error occured during clamAV installation, update the database
+        freshclam
+        if [ $? -ne 0 ]; then
+            LogMessage "Warning: Unable to update ClamAV definitions." $logFile
+            exit 20
+        fi
+
+        # Install amavis and spamassassin
+        apt-get install -y amavisd-new
+        if [ $? -ne 0 ]; then
+            if [ $? -eq 100 ]; then
+                LogMessage "Warning: Amavis was not able to get the FQDN of the server."
+                LogMessage "Warning: Please edit /etc/amavis/conf.d/05-node_id and restart the amavis service."
+            else
+                LogMessage "Error: Unable to install amavisd-new." $logFile
+                exit 4
+            fi
+        fi
+
+        apt-get install -y spamassassin
+        if [ $? -ne 0 ]; then
+            LogMessage "Error: Unable to install spamassassin." $logFile
+            exit 4
+        fi
+    fi
+
+
+    # Install the E-mail web client
+    if [ "$clientApp" == "roundcube" ]; then
+        git clone https://github.com/roundcube/roundcubemail.git 
+    fi
+
+    if [ "$clientApp" == "squirrel" ]; then
+        apt-get install -y squirrelmail
+        if [ $? -ne 0 ]; then
+            LogMessage "Error: Unable to install squirrelmail." $logFile
+            exit 4
+        fi
+    fi
+
 fi
 
+#############################################CentOS
 if [[ "$DISTRO" == "centos"* ]]; then
     LogMessage "Info: $DISTRO distribution detected." $logFile
     LogMessage "Info: Proceeding to package installation." $logFile
+
+    centosPackages=(bind bind-utils httpd php postfix dovecot*)
+    for package in $centosPackages; do
+        yum install -y $package
+        if [ $? -ne 0 ]; then
+            LogMessage "Error: Unable to install $package ." $logFile
+            exit 4
+        fi
+    done
+
+    # Install the E-mail web client
+    if [ "$clientApp" == "roundcube" ]; then
+        LogMessage "Error: Package not supported yet." $logFile
+    fi
+
+    if [ "$clientApp" == "squirrel" ]; then
+        yum -y install epel-release
+        if [ $? -ne 0 ]; then
+            LogMessage "Error: Unable to install epel-release. The following package might fail to install." $logFile
+            exit 4
+        fi
+
+        yum -y install squirrelmail
+        if [ $? -ne 0 ]; then
+            LogMessage "Error: Unable to install squirrelmail. Check if epel-release has been installed." $logFile
+            exit 4
+        fi
+    fi
+    
 fi

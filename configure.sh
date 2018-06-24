@@ -52,15 +52,22 @@ if [ $totalMemMB -lt 1024 ]; then
 fi
 
 # Read parameters
-while getopts G:O:r:w:A: option; do
+while getopts D:G:O:r:w:A: option; do
     case "${option}" in
+        D) domainName=${OPTARG};;       #specifie the domain name which will be used to create the FQDN for the mail server.
         G) instalGUI=${OPTARG};;        #if set to [yes] a Graphical User Interface will be installed on the Linux Machine. Reboot required.
         O) openSSH=${OPTARG};;          #if set to [yes] it installs openssh-server on the Linux machine
-        r) rootAuth=${OPTARG};;         #if set to [yes] it configures the ssh service to allow root login with password
-        w) installApache=${OPTARG};;    #if set to [yes] appache2 package will be installed. Required for web interface administration.
         A) autoConfig=${OPTARG};;
     esac
 done
+
+#Append the domain name to the constants.sh file
+domain=`echo $domainName | cut -d '.' -f 1`
+tld=`echo $domainName | cut -d '.' -f 2`
+echo "domainName=$domainName" >> constants.sh
+echo "fqdn=$hostName.$domainName" >> constants.sh
+echo "domain=$domain" >> constants.sh
+echo "tld=$tld" >> constants.sh
 
 # Check the distro we are running on
 GetDistro
@@ -68,7 +75,7 @@ GetDistro
 if [[ "$DISTRO" == "ubuntu"* ]]; then
     LogMessage "Info: $DISTRO distribution detected." $logFile
     LogMessage "Info: Proceeding to package installation." $logFile
-    
+
     # Update repositories before proceeding to package installation
     apt-get update 2>&1 >/dev/null
     if [ $? -ne 0 ]; then
@@ -79,10 +86,9 @@ if [[ "$DISTRO" == "ubuntu"* ]]; then
     if [ "$autoConfig" == "yes" ] || [ "$autoConfig" == "Yes" ]; then
         instalGUI="yes"
         openSSH="yes"
-        rootAuth="yes"
-        installApache="yes"
+
     fi
-    
+
     if [ "$instalGUI" == "yes" ] || [ "$instalGUI" == "Yes" ]; then
         dpkg --list | grep xserver
         if [ $? -ne 0 ]; then
@@ -92,7 +98,7 @@ if [[ "$DISTRO" == "ubuntu"* ]]; then
                 exit 4
             fi
         else
-            LogMessage "Info: A GUI seems to be already installed. Skipping installation."$logFile
+            LogMessage "Info: A GUI seems to be already installed. Skipping installation." $logFile
         fi
     fi
 
@@ -101,49 +107,90 @@ if [[ "$DISTRO" == "ubuntu"* ]]; then
         if [ $? -ne 0 ]; then
             apt-get install -y openssh-server
             if [ $? -ne 0 ]; then
-                LogMessage "Error: Unable install openssh-server" $logFile
-                exit 5
+                LogMessage "Error: Unable to install openssh-server." $logFile
+                exit 4
             fi
         else
             LogMessage "Info: OpenSSH-Server is already installed. Skipping installation." $logFile
         fi
-    fi
 
-    if [ "$rootAuth" == "yes" ] || [ "$rootAuth" == "Yes" ]; then
         cat /etc/ssh/sshd_config | grep "#PermitRootLogin"
         if [ $? -eq 0 ]; then
+            sed -i -e 's/prohibit-password/yes/g' /etc/ssh/sshd_config
             sed -i -e 's/#PermitRootLogin/PermitRootLogin/g' /etc/ssh/sshd_config
             if [ $? -ne 0 ]; then
                 LogMessage "Error: Unable to uncomment PermitRootLogin" $logFile
-                exit 6
+                exit 5
             fi
         fi
-        
+
         cat /etc/ssh/sshd_config | grep "#PasswordAuthentication"
         if [ $? -eq 0 ]; then
             sed -i -e 's/#PasswordAuthentication/PasswordAuthentication/g' /etc/ssh/sshd_config
             if [ $? -ne 0 ]; then
                 LogMessage "Error: Unable to uncomment PasswordAuthentication" $logFile
-                exit 7
+                exit 5
             fi
         fi
-    fi
-
-    if [ "$installApache" == "yes" ] || [ "$installApache" == "Yes" ]; then
-        dpkg --list | grep -w apache2
-        if [ $? -ne 0 ]; then
-            apt-get install -y apache2
-            if [ $? -ne 0 ]; then
-                LogMessage "Error: Unable to uncomment PasswordAuthentication" $logFile
-                exit 7
-            fi
-        else
-            LogMessage "Info: Apache2 is already installed. Skipping installation." $logFile
-        fi
+        # Restart the service to apply the new settings
+        systemctl restart sshd
     fi
 fi
 
+######################################CentOS
 if [[ "$DISTRO" == "centos"* ]]; then
     LogMessage "Info: $DISTRO distribution detected." $logFile
     LogMessage "Info: Proceeding to package installation." $logFile
+
+    if [ "$instalGUI" == "yes" ] || [ "$instalGUI" == "Yes" ]; then
+        rpm -qa | grep xserver
+        if [ $? -ne 0 ]; then
+            yum groupinstall -y "GNOME Desktop" "Graphical Administration Tools"
+            if [ $? -ne 0 ]; then
+                LogMessage "Error: Unable to install GNOME Desktop." $logFile
+                exit 4
+            fi
+        else
+            LogMessage "Info: A GUI seems to be already installed. Skipping installation." $logFile
+        fi
+
+        ln -sf /lib/systemd/system/runlevel5.target /etc/systemd/system/default.target
+        if [ $? -ne 0 ]; then
+            LogMessage "Error: Unable to create symlink for graphical target." $logFile
+            exit 5
+        fi
+    fi
+
+    if [ "$openSSH" == "yes" ] || [ "$openSSH" == "Yes" ]; then
+        rpm -qa | grep openssh-server
+        if [ $? -ne 0 ]; then
+            yum install -y openssh-server
+            if [ $? -ne 0 ]; then
+                LogMessage "Error: Unable to install openssh-server." $logFile
+                exit 4
+            fi
+        else
+            LogMessage "Info: OpenSSH-Server is already installed. Skipping installation." $logFile
+        fi
+
+        cat /etc/ssh/sshd_config | grep "#PermitRootLogin"
+        if [ $? -eq 0 ]; then
+            sed -i -e 's/#PermitRootLogin/PermitRootLogin/g' /etc/ssh/sshd_config
+            if [ $? -ne 0 ]; then
+                LogMessage "Error: Unable to uncomment PermitRootLogin" $logFile
+                exit 5
+            fi
+        fi
+
+        cat /etc/ssh/sshd_config | grep "#PasswordAuthentication"
+        if [ $? -eq 0 ]; then
+            sed -i -e 's/#PasswordAuthentication/PasswordAuthentication/g' /etc/ssh/sshd_config
+            if [ $? -ne 0 ]; then
+                LogMessage "Error: Unable to uncomment PasswordAuthentication" $logFile
+                exit 5
+            fi
+        fi
+        # Restart the service to apply the new settings
+        systemctl restart sshd
+    fi
 fi
