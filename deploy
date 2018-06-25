@@ -111,15 +111,15 @@ if [[ "$DISTRO" == "ubuntu"* ]]; then
     cp /etc/bind/db.local /etc/bind/db.$domain
     cp /etc/bind/db.127 /etc/bind/db.$ipA
     
-    sed -i 's/\tlocalhost/\tns.$domainName/g' /etc/bind/db.$domain
-    sed -i 's/root.localhost/root.$domainName/g' /etc/bind/db.$domain
+    sed -i "s/\tlocalhost/\tns.$domainName/g" /etc/bind/db.$domain
+    sed -i "s/root.localhost/root.$domainName/g" /etc/bind/db.$domain
     # sed -i 's/127.0.0.1/$ipA.$ipB.ipC.1/g' /etc/bind/db.$domain
     # sed -i 's/::1/$ipA.$ipB.ipC.1/g' /etc/bind/db.$domain
     # sed -i 's/AAAA/A/g' /etc/bind/db.$domain
     
     
-    sed -i 's/\tlocalhost/\tns.$domainName/g' /etc/bind/db.$ipA
-    sed -i 's/root.localhost/root.$domainName/g' /etc/bind/db.$ipA
+    sed -i "s/\tlocalhost/\tns.$domainName/g" /etc/bind/db.$ipA
+    sed -i "s/root.localhost/root.$domainName/g" /etc/bind/db.$ipA
     
     AddRecord 
     

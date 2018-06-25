@@ -156,6 +156,10 @@ SplitIP()
     ipB=`echo $1 | -d '.' -f 2`
     ipC=`echo $1 | -d '.' -f 3`
     ipD=`echo $1 | -d '.' -f 4`
+    echo "$ipA"
+    echo "$ipB"
+    echo "$ipC"
+    echo "$ipD"
     
 }
 
@@ -163,10 +167,10 @@ SplitIP()
 # $2 == domain
 UpdateNamedConf()
 {
-    echo 'zone "$1" {' >> /etc/bind/named.conf.local
-    echo -e '\ttype master;' >> /etc/bind/named.conf.local
-    echo -e '\tfile "/etc/bind/db.$2";' >> /etc/bind/named.conf.local
-    echo -e '};\n' >> /etc/bind/named.conf.local
+    echo -e "zone \"$1\" {\"" >> /etc/bind/named.conf.local
+    echo -e "\ttype master;" >> /etc/bind/named.conf.local
+    echo -e "\tfile \"/etc/bind/db.$2\";" >> /etc/bind/named.conf.local
+    echo -e "\"};\n" >> /etc/bind/named.conf.local
 }
 
 # Add record to db file in /etc/bind/
