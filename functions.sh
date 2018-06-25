@@ -100,7 +100,8 @@ return 0
 }
 
 # Check for basic OS info
-GetHostInfo() {
+GetHostInfo()
+{
     # Clean old constants.sh
     if [ -e constants.sh ]; then
         rm -rf constants.sh
@@ -147,3 +148,36 @@ GetHostInfo() {
     echo "hostIPv4=$hostIPv4" >> constants.sh
     echo "wanIPv4=$wanIPv4" >> constants.sh
 }
+
+# $1 == ipv4 address
+SplitIP()
+{
+    ipA=`echo $1 | -d '.' -f 1`
+    ipB=`echo $1 | -d '.' -f 2`
+    ipC=`echo $1 | -d '.' -f 3`
+    ipD=`echo $1 | -d '.' -f 4`
+    
+}
+
+# $1 == domainName
+# $2 == domain
+UpdateNamedConf()
+{
+    echo 'zone "$1" {' >> /etc/bind/named.conf.local
+    echo -e '\ttype master;' >> /etc/bind/named.conf.local
+    echo -e '\tfile "/etc/bind/db.$2";' >> /etc/bind/named.conf.local
+    echo -e '};\n' >> /etc/bind/named.conf.local
+}
+
+# Add record to db file in /etc/bind/
+# $1 == @ or ns or www or mail
+# $2 == IN or OUT
+# $3 == A, MX, AAAA, CNAME etc.
+# $4 == address
+# $5 == the file where to append the given parameters (absolute path)
+
+AddRecord()
+{
+    echo -e '$1\t$2\t$3\t$4' >> $5
+}
+

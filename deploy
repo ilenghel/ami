@@ -98,6 +98,38 @@ if [[ "$DISTRO" == "ubuntu"* ]]; then
         LogMessage "Warning: Postfix is not listening on IPv4 SMTP port (Port 25)."
     fi
 
+    # Split the host IPv4 address to have access to all digits
+    SplitIP $hostIPv4
+    
+    # Create bind zone format
+    reverseZone="$ipC.$ipB.$ipA.in-addr-arpa"
+    
+    # Now let's start configuring postfix
+    UpdateNamedConf $domainName $domain
+    UpdateNamedConf $reverseZone $ipA
+    
+    cp /etc/bind/db.local /etc/bind/db.$domain
+    cp /etc/bind/db.127 /etc/bind/db.$ipA
+    
+    sed -i 's/\tlocalhost/\tns.$domainName/g' /etc/bind/db.$domain
+    sed -i 's/root.localhost/root.$domainName/g' /etc/bind/db.$domain
+    # sed -i 's/127.0.0.1/$ipA.$ipB.ipC.1/g' /etc/bind/db.$domain
+    # sed -i 's/::1/$ipA.$ipB.ipC.1/g' /etc/bind/db.$domain
+    # sed -i 's/AAAA/A/g' /etc/bind/db.$domain
+    
+    
+    sed -i 's/\tlocalhost/\tns.$domainName/g' /etc/bind/db.$ipA
+    sed -i 's/root.localhost/root.$domainName/g' /etc/bind/db.$ipA
+    
+    AddRecord 
+    
+    
+    
+    
+    
+    
+    
+    
     if [ "$virusScan" == "yes" ] || [ "$virusScan" == "Yes" ]; then
 
         
